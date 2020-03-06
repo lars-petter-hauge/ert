@@ -47,10 +47,11 @@ class Response(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    indexes = Column(PickleType)
     values = Column(PickleType)
     realization_id = Column(Integer, ForeignKey("realizations.id"))
     realization = relationship("Realization", back_populates="responses")
+    observation_id = Column(Integer, ForeignKey("observations.id"))
+    observation = relationship("Observation", back_populates="responses")
 
     __table_args__ = (
         UniqueConstraint("name", "realization_id", name="_name_realization_id_"),
@@ -65,6 +66,7 @@ class Response(Base):
 Realization.responses = relationship(
     "Response", order_by=Response.id, back_populates="realization"
 )
+
 
 
 class Parameter(Base):
@@ -109,5 +111,8 @@ class Observation(Base):
             self.name, self.key_indexes, self.data_indexes, self.values, self.stds
         )
 
+Observation.responses = relationship(
+    "Response", order_by=Response.id, back_populates="observation"
+)
 
 Session = sessionmaker()

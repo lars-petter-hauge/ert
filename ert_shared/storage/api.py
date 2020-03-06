@@ -77,13 +77,13 @@ class StorageApi:
 
         return realization
 
-    def add_response(self, name, indexes, values, realization_index, ensemble_name):
+    def add_response(self, name, values, realization_index, ensemble_name, observation_id=None):
         realization = self.get_realization(
             index=realization_index, ensemble_name=ensemble_name
         )
 
         response = Response(
-            name=name, indexes=indexes, values=values, realization_id=realization.id
+            name=name, values=values, realization_id=realization.id, observation_id=observation_id
         )
         self._session.add(response)
         self._session.commit()
@@ -116,6 +116,9 @@ class StorageApi:
         self._session.commit()
 
         return observation
+
+    def get_all_observation_keys(self):
+        return [obs.name for obs in self._session.query(Observation.name).all()]
 
     def __del__(self):
         if self._connection is not None:

@@ -58,7 +58,6 @@ def test_add_response(db_session):
     realization = api.add_realization(0, "test")
     response = api.add_response(
         name="test",
-        indexes=[0, 3],
         values=[22.1, 44.2],
         realization_index=0,
         ensemble_name="test",
