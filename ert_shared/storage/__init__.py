@@ -13,6 +13,10 @@ class Ensemble(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String)
 
+    __table_args__ = (
+        UniqueConstraint("name", name="_name_ensemble_id_"),
+    )
+
     def __repr__(self):
         return "<Ensemble(name='{}')>".format(self.name)
 

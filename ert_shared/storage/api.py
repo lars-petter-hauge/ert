@@ -67,11 +67,11 @@ class StorageApi:
         self._session.commit()
         return ensemble
 
-    def add_realization(self, realization_index, ensemble_name):
+    def add_realization(self, index, ensemble_name):
         # TODO: Look into subtransactions
         ensemble = self.get_ensemble(name=ensemble_name)
 
-        realization = Realization(index=realization_index, ensemble_id=ensemble.id)
+        realization = Realization(index=index, ensemble_id=ensemble.id)
         self._session.add(realization)
         self._session.commit()
 
