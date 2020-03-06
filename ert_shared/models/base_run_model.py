@@ -68,6 +68,7 @@ class BaseRunModel(object):
         try:
             self.initial_realizations_mask = arguments["active_realizations"]
             run_context = self.runSimulations(arguments)
+            # insert stuff here
             self.updateDetailedProgress()
             self.completed_realizations_mask = run_context.get_mask()
         except ErtRunError as e:
