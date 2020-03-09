@@ -57,7 +57,7 @@ def test_add_response(db_session):
     ensemble = api.add_ensemble(name="test")
     realization = api.add_realization(0, "test")
     response = api.add_response(
-        name="test", values=[22.1, 44.2], realization_index=0, ensemble_name="test",
+        name="test", values=[22.1, 44.2], indexes=[0, 1], realization_index=0, ensemble_name="test",
     )
     assert ensemble.id is not None
     assert realization.id is not None

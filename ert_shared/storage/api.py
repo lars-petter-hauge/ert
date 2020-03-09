@@ -15,7 +15,7 @@ class StorageApi:
 
         if session is None:
             # engine = create_engine("sqlite:///:memory:", echo=True)
-            engine = create_engine("sqlite:///test.db", echo=True)
+            engine = create_engine("sqlite:///test.db", echo=False)
             Base.metadata.create_all(engine)
             self._connection = engine.connect()
             self._session = Session(bind=self._connection)
@@ -77,13 +77,13 @@ class StorageApi:
 
         return realization
 
-    def add_response(self, name, values, realization_index, ensemble_name, observation_id=None):
+    def add_response(self, name, values, indexes, realization_index, ensemble_name, observation_id=None):
         realization = self.get_realization(
             index=realization_index, ensemble_name=ensemble_name
         )
 
         response = Response(
-            name=name, values=values, realization_id=realization.id, observation_id=observation_id
+            name=name, values=values, indexes=indexes, realization_id=realization.id, observation_id=observation_id
         )
         self._session.add(response)
         self._session.commit()

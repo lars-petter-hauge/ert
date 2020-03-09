@@ -48,6 +48,7 @@ class Response(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String)
     values = Column(PickleType)
+    indexes = Column(PickleType)
     realization_id = Column(Integer, ForeignKey("realizations.id"))
     realization = relationship("Realization", back_populates="responses")
     observation_id = Column(Integer, ForeignKey("observations.id"))

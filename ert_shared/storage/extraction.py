@@ -80,26 +80,25 @@ def _extract_and_dump_responses(api):
     gen_data_keys = [
         key for key in facade.all_data_type_keys() if facade.is_gen_data_key(key)
     ]
-    # summary_data_keys = [
-    #     key for key in facade.all_data_type_keys() if facade.is_summary_key(key)
-    # ]
+    summary_data_keys = [
+        key for key in facade.all_data_type_keys() if facade.is_summary_key(key)
+    ]
 
     gen_data_data = {
         key.split("@")[0]: facade.gather_gen_data_data(case=ensemble_name, key=key)
         for key in gen_data_keys
     }
-    # summary_data = {
-    #     key: facade.gather_summary_data(case=ensemble_name, key=key)
-    #     for key in summary_data_keys
-    # }
+    summary_data = {
+        key: facade.gather_summary_data(case=ensemble_name, key=key)
+        for key in summary_data_keys
+    }
 
-    print(gen_data_data)
-    # print(summary_data)
+    # print(gen_data_data)
     observation_keys = api.get_all_observation_keys()
-    print(observation_keys)
     key_mapping = {facade.get_data_key_for_obs_key(key): key for key in observation_keys}
 
     _dump_response(api=api, responses=gen_data_data, ensemble_name=ensemble_name, key_mapping=key_mapping)
+    _dump_response(api=api, responses=summary_data, ensemble_name=ensemble_name, key_mapping=key_mapping)
 
 
 def _dump_response(api, responses, ensemble_name, key_mapping):
@@ -123,6 +122,7 @@ def _dump_response(api, responses, ensemble_name, key_mapping):
             api.add_response(
                 name=key,
                 values=values.to_list(),
+                indexes=response.index.to_list(),
                 realization_index=realization.index,
                 ensemble_name=ensemble.name,
                 observation_id=observation_id
@@ -131,10 +131,14 @@ def _dump_response(api, responses, ensemble_name, key_mapping):
 
 
 def dump_to_new_storage(api=None):
+    print("Starting extraction...")
+    import time
+    start = time.time()
     if api is None:
         api = StorageApi()
 
     _extract_and_dump_observations(api=api)
     _extract_and_dump_parameters(api=api)
     _extract_and_dump_responses(api=api)
-
+    end = time.time()
+    print("Extraction done... {}".format(end - start))
