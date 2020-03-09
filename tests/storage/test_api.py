@@ -57,16 +57,43 @@ def test_add_response(db_session):
     ensemble = api.add_ensemble(name="test")
     realization = api.add_realization(0, "test")
     response = api.add_response(
-        name="test",
-        values=[22.1, 44.2],
-        realization_index=0,
-        ensemble_name="test",
+        name="test", values=[22.1, 44.2], realization_index=0, ensemble_name="test",
     )
     assert ensemble.id is not None
     assert realization.id is not None
     assert realization.ensemble_id is not None
     assert response.id is not None
     assert response.realization_id is not None
+
+
+def test_add_ensemble(db_session):
+    api = StorageApi(session=db_session)
+    ensemble = api.add_ensemble(name="test_ensemble")
+    assert ensemble.id is not None
+
+    with pytest.raises(sqlalchemy.exc.IntegrityError) as error:
+        api.add_ensemble(name="test_ensemble")
+    assert "column name is not unique" in str(error)
+
+
+def test_add_realization(db_session):
+    api = StorageApi(session=db_session)
+    ensemble = api.add_ensemble(name="test_ensemble")
+    assert ensemble.id is not None
+    realization_0 = api.add_realization(0, "test_ensemble")
+    realization_1 = api.add_realization(1, "test_ensemble")
+    realization_2 = api.add_realization(2, "test_ensemble")
+    realization_3 = api.add_realization(3, "test_ensemble")
+    realization_4 = api.add_realization(4, "test_ensemble")
+    assert realization_0.id is not None
+    assert realization_1.id is not None
+    assert realization_2.id is not None
+    assert realization_3.id is not None
+    assert realization_4.id is not None
+
+    with pytest.raises(sqlalchemy.exc.IntegrityError) as error:
+        api.add_realization(0, ensemble_name="test_ensemble")
+    assert "columns index, ensemble_id are not unique" in str(error)
 
 
 def test_add_parameter(db_session):
