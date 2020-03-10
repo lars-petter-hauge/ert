@@ -10,7 +10,7 @@ from ert_shared.storage import (
 from sqlalchemy import create_engine
 
 
-class StorageApi:
+class ErtDataSource:
     def __init__(self, session=None):
 
         if session is None:
