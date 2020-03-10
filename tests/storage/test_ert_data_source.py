@@ -38,6 +38,7 @@ def test_add_duplicate_observation(db_session):
             stds=[1, 3],
         )
 
+
 observation_data = {
     ("POLY_OBS", 0, 10): {"OBS": 2.0, "STD": 0.1},
     ("POLY_OBS", 2, 12): {"OBS": 7.1, "STD": 1.1},
@@ -55,7 +56,11 @@ def test_add_response(db_session):
     ensemble = data_source.add_ensemble(name="test")
     realization = data_source.add_realization(0, "test")
     response = data_source.add_response(
-        name="test", values=[22.1, 44.2], indexes=[0, 1], realization_index=0, ensemble_name="test",
+        name="test",
+        values=[22.1, 44.2],
+        indexes=[0, 1],
+        realization_index=0,
+        ensemble_name="test",
     )
     assert ensemble.id is not None
     assert realization.id is not None
@@ -74,28 +79,30 @@ def test_add_ensemble(db_session):
 
 
 def test_add_realization(db_session):
-    data_source = ErtDataSource(session=db_session)
-    ensemble = data_source.add_ensemble(name="test_ensemble")
-    assert ensemble.id is not None
-    realization_0 = data_source.add_realization(0, "test_ensemble")
-    realization_1 = data_source.add_realization(1, "test_ensemble")
-    realization_2 = data_source.add_realization(2, "test_ensemble")
-    realization_3 = data_source.add_realization(3, "test_ensemble")
-    realization_4 = data_source.add_realization(4, "test_ensemble")
-    assert realization_0.id is not None
-    assert realization_1.id is not None
-    assert realization_2.id is not None
-    assert realization_3.id is not None
-    assert realization_4.id is not None
+    with ErtDataSource(db_session) as db:
+        ensemble = db.add_ensemble(name="test_ensemble")
+        db.commit()
 
-    with pytest.raises(sqlalchemy.exc.IntegrityError) as error:
-        data_source.add_realization(0, ensemble_name="test_ensemble")
+        realizations = db.add_realizations([i for i in range(5)], "test_ensemble")
+
+        db.commit()
+
+        assert ensemble.id is not None
+        for realization in realizations:
+            assert realization.id is not None
+
+    with pytest.raises(sqlalchemy.exc.IntegrityError) as error, ErtDataSource(
+        session=db_session
+    ) as db:
+        db.add_realizations([0], ensemble_name="test_ensemble")
+        db.commit()
 
 
 def test_add_parameter(db_session):
     data_source = ErtDataSource(session=db_session)
     ensemble = data_source.add_ensemble(name="test")
     realization = data_source.add_realization(0, "test")
+    
     parameter = data_source.add_parameter(
         name="test",
         group="test_group",

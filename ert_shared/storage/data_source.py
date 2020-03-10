@@ -2,26 +2,36 @@ from ert_shared.storage import (
     Observation,
     Realization,
     Ensemble,
-    Session,
     Base,
     Response,
     Parameter,
 )
 from sqlalchemy import create_engine
+from ert_shared.storage.session import session_factory
 
 
 class ErtDataSource:
     def __init__(self, session=None):
 
         if session is None:
-            # engine = create_engine("sqlite:///:memory:", echo=True)
-            engine = create_engine("sqlite:///test.db", echo=False)
-            Base.metadata.create_all(engine)
-            self._connection = engine.connect()
-            self._session = Session(bind=self._connection)
+            self._session = session_factory.get_session()
         else:
-            self._connection = None
             self._session = session
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
+    def commit(self):
+        self._session.commit()
+
+    def rollback(self):
+        self._session.rollback()
+
+    def close(self):
+        self._session.close()
 
     def get_ensemble(self, name):
         return self._session.query(Ensemble).filter_by(name=name).first()
@@ -50,11 +60,7 @@ class ErtDataSource:
         )
         return (
             self._session.query(Response)
-            .filter_by(
-                name=name,
-                group=group,
-                realization_id=realization.id,
-            )
+            .filter_by(name=name, group=group, realization_id=realization.id,)
             .first()
         )
 
@@ -64,26 +70,40 @@ class ErtDataSource:
     def add_ensemble(self, name):
         ensemble = Ensemble(name=name)
         self._session.add(ensemble)
-        self._session.commit()
+        # self._session.commit()
         return ensemble
 
-    def add_realization(self, index, ensemble_name):
-        # TODO: Look into subtransactions
+    def add_realizations(self, indexes, ensemble_name):
         ensemble = self.get_ensemble(name=ensemble_name)
 
-        realization = Realization(index=index, ensemble_id=ensemble.id)
-        self._session.add(realization)
-        self._session.commit()
+        realizations = []
+        for index in indexes:
+            realization = Realization(index=index)
+            ensemble.realizations.append(realization)
+            realizations.append(realization)
+            self._session.add(realization)
 
-        return realization
+        return realizations
 
-    def add_response(self, name, values, indexes, realization_index, ensemble_name, observation_id=None):
+    def add_response(
+        self,
+        name,
+        values,
+        indexes,
+        realization_index,
+        ensemble_name,
+        observation_id=None,
+    ):
         realization = self.get_realization(
             index=realization_index, ensemble_name=ensemble_name
         )
 
         response = Response(
-            name=name, values=values, indexes=indexes, realization_id=realization.id, observation_id=observation_id
+            name=name,
+            values=values,
+            indexes=indexes,
+            realization_id=realization.id,
+            observation_id=observation_id,
         )
         self._session.add(response)
         self._session.commit()
@@ -119,10 +139,4 @@ class ErtDataSource:
 
     def get_all_observation_keys(self):
         return [obs.name for obs in self._session.query(Observation.name).all()]
-
-    def __del__(self):
-        if self._connection is not None:
-            self._connection.close()
-        if self._session is not None:
-            self._session.close()
 

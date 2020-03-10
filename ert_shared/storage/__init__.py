@@ -115,5 +115,3 @@ class Observation(Base):
 Observation.responses = relationship(
     "Response", order_by=Response.id, back_populates="observation"
 )
-
-Session = sessionmaker()
