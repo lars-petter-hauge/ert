@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from ert_shared.storage.session import session_factory
 
 
-class ErtDataSource:
+class ErtRepository:
     def __init__(self, session=None):
 
         if session is None:

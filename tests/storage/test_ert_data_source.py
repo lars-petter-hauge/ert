@@ -3,14 +3,14 @@ import pytest
 import sqlalchemy.exc
 
 from ert_shared.storage import Observation
-from ert_shared.storage.data_source import ErtDataSource
+from ert_shared.storage.repository import ErtRepository
 
 from tests.storage import db_session, engine, tables
 
 
 def test_add_observation(db_session):
-    data_source = ErtDataSource(session=db_session)
-    observation = data_source.add_observation(
+    repository = ErtRepository(session=db_session)
+    observation = repository.add_observation(
         name="test",
         key_indexes=[0, 3],
         data_indexes=[0, 3],
@@ -21,8 +21,8 @@ def test_add_observation(db_session):
 
 
 def test_add_duplicate_observation(db_session):
-    data_source = ErtDataSource(session=db_session)
-    observation = data_source.add_observation(
+    repository = ErtRepository(session=db_session)
+    observation = repository.add_observation(
         name="test",
         key_indexes=[0, 3],
         data_indexes=[0, 3],
@@ -30,7 +30,7 @@ def test_add_duplicate_observation(db_session):
         stds=[1, 3],
     )
     with pytest.raises(sqlalchemy.exc.IntegrityError) as error:
-        observation = data_source.add_observation(
+        observation = repository.add_observation(
             name="test",
             key_indexes=[0, 3],
             data_indexes=[0, 3],
@@ -52,10 +52,10 @@ observation_data = {
 
 
 def test_add_response(db_session):
-    data_source = ErtDataSource(session=db_session)
-    ensemble = data_source.add_ensemble(name="test")
-    realization = data_source.add_realization(0, "test")
-    response = data_source.add_response(
+    repository = ErtRepository(session=db_session)
+    ensemble = repository.add_ensemble(name="test")
+    realization = repository.add_realization(0, "test")
+    response = repository.add_response(
         name="test",
         values=[22.1, 44.2],
         indexes=[0, 1],
@@ -70,16 +70,16 @@ def test_add_response(db_session):
 
 
 def test_add_ensemble(db_session):
-    data_source = ErtDataSource(session=db_session)
-    ensemble = data_source.add_ensemble(name="test_ensemble")
+    repository = ErtRepository(session=db_session)
+    ensemble = repository.add_ensemble(name="test_ensemble")
     assert ensemble.id is not None
 
     with pytest.raises(sqlalchemy.exc.IntegrityError) as error:
-        data_source.add_ensemble(name="test_ensemble")
+        repository.add_ensemble(name="test_ensemble")
 
 
 def test_add_realization(db_session):
-    with ErtDataSource(db_session) as db:
+    with ErtRepository(db_session) as db:
         ensemble = db.add_ensemble(name="test_ensemble")
         db.commit()
 
@@ -91,7 +91,7 @@ def test_add_realization(db_session):
         for realization in realizations:
             assert realization.id is not None
 
-    with pytest.raises(sqlalchemy.exc.IntegrityError) as error, ErtDataSource(
+    with pytest.raises(sqlalchemy.exc.IntegrityError) as error, ErtRepository(
         session=db_session
     ) as db:
         db.add_realizations([0], ensemble_name="test_ensemble")
@@ -99,11 +99,11 @@ def test_add_realization(db_session):
 
 
 def test_add_parameter(db_session):
-    data_source = ErtDataSource(session=db_session)
-    ensemble = data_source.add_ensemble(name="test")
-    realization = data_source.add_realization(0, "test")
-    
-    parameter = data_source.add_parameter(
+    repository = ErtRepository(session=db_session)
+    ensemble = repository.add_ensemble(name="test")
+    realization = repository.add_realization(0, "test")
+
+    parameter = repository.add_parameter(
         name="test",
         group="test_group",
         value=22.1,

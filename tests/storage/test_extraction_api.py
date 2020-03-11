@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from ert_shared.storage.data_source import ErtDataSource
+from ert_shared.storage.repository import ErtRepository
 from ert_shared.storage.extraction_api import _dump_observations
 
 from tests.storage import db_session, engine, tables
@@ -19,17 +19,17 @@ observation_data = {
 
 
 def test_dump_observations(db_session):
-    data_source = ErtDataSource(session=db_session)
+    repository = ErtRepository(session=db_session)
     observations = pd.DataFrame.from_dict(observation_data)
-    _dump_observations(data_source=data_source, observations=observations)
+    _dump_observations(repository=repository, observations=observations)
 
-    poly_obs = data_source.get_observation("POLY_OBS")
+    poly_obs = repository.get_observation("POLY_OBS")
     assert poly_obs.key_indexes == [0, 2, 4, 6, 8]
     assert poly_obs.data_indexes == [10, 12, 14, 16, 18]
     assert poly_obs.values == [2.0, 7.1, 21.1, 31.8, 53.2]
     assert poly_obs.stds == [0.1, 1.1, 4.1, 9.1, 16.1]
 
-    test_obs = data_source.get_observation("TEST_OBS")
+    test_obs = repository.get_observation("TEST_OBS")
     assert test_obs.key_indexes == [3, 6, 9]
     assert test_obs.data_indexes == [3, 6, 9]
     assert test_obs.values == [6, 12, 18]
