@@ -153,6 +153,7 @@ def dump_to_new_storage(repository=None):
         _extract_and_dump_observations(repository=repository)
         _extract_and_dump_parameters(repository=repository, ensemble_name=ensemble.name)
         _extract_and_dump_responses(repository=repository, ensemble_name=ensemble.name)
+        repository.commit()
 
     end = time.time()
     print("Extraction done... {}".format(end - start))
