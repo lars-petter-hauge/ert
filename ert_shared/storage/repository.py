@@ -3,7 +3,9 @@ from ert_shared.storage import (
     Realization,
     Ensemble,
     Base,
+    ResponseDefinition,
     Response,
+    ParameterDefinition,
     Parameter,
 )
 from sqlalchemy import create_engine
@@ -44,13 +46,33 @@ class ErtRepository:
             .first()
         )
 
+    def _get_response_definition(self, name, ensemble_id):
+        return (
+            self._session.query(ResponseDefinition)
+            .filter_by(name=name, ensemble_id=ensemble_id)
+            .first()
+        )
+
+    def _get_parameter_definition(self, name, group, ensemble_id):
+        return (
+            self._session.query(ParameterDefinition)
+            .filter_by(name=name, group=group, ensemble_id=ensemble_id)
+            .first()
+        )
+
     def get_response(self, name, realization_index, ensemble_name):
         realization = self.get_realization(
             index=realization_index, ensemble_name=ensemble_name
         )
+        response_definition = self._get_response_definition(
+            name=name, ensemble_id=realization.ensemble.id
+        )
         return (
             self._session.query(Response)
-            .filter_by(name=name, realization_id=realization.id)
+            .filter_by(
+                realization_id=realization.id,
+                response_definition_id=response_definition.id,
+            )
             .first()
         )
 
@@ -58,9 +80,15 @@ class ErtRepository:
         realization = self.get_realization(
             index=realization_index, ensemble_name=ensemble_name
         )
+        parameter_definition = self._get_parameter_definition(
+            name=name, group=group, ensemble_id=realization.ensemble.id
+        )
         return (
-            self._session.query(Response)
-            .filter_by(name=name, group=group, realization_id=realization.id,)
+            self._session.query(Parameter)
+            .filter_by(
+                parameter_definition_id=parameter_definition.id,
+                realization_id=realization.id,
+            )
             .first()
         )
 
@@ -82,37 +110,66 @@ class ErtRepository:
 
         return realization
 
+    def add_response_definition(
+        self, name, indexes, ensemble_name, observation_name=None,
+    ):
+        ensemble = self.get_ensemble(name=ensemble_name)
+        observation = None
+        if observation_name is not None:
+            observation = self.get_observation(name=observation_name)
+
+        response_definition = ResponseDefinition(
+            name=name,
+            indexes=indexes,
+            ensemble_id=ensemble.id,
+            observation_id=observation.id if observation is not None else None,
+        )
+        self._session.add(response_definition)
+
+        return response_definition
+
     def add_response(
-        self,
-        name,
-        values,
-        indexes,
-        realization_index,
-        ensemble_name,
-        observation_id=None,
+        self, name, values, realization_index, ensemble_name,
     ):
         realization = self.get_realization(
             index=realization_index, ensemble_name=ensemble_name
         )
-
+        response_definition = self._get_response_definition(
+            name=name, ensemble_id=realization.ensemble.id
+        )
         response = Response(
-            name=name,
             values=values,
-            indexes=indexes,
             realization_id=realization.id,
-            observation_id=observation_id,
+            response_definition_id=response_definition.id,
         )
         self._session.add(response)
 
         return response
+
+    def add_parameter_definition(
+        self, name, group, ensemble_name,
+    ):
+        ensemble = self.get_ensemble(name=ensemble_name)
+
+        parameter_definition = ParameterDefinition(
+            name=name, group=group, ensemble_id=ensemble.id,
+        )
+        self._session.add(parameter_definition)
+
+        return parameter_definition
 
     def add_parameter(self, name, group, value, realization_index, ensemble_name):
         realization = self.get_realization(
             index=realization_index, ensemble_name=ensemble_name
         )
 
+        parameter_definition = self._get_parameter_definition(
+            name=name, group=group, ensemble_id=realization.ensemble.id
+        )
         parameter = Parameter(
-            name=name, group=group, value=value, realization_id=realization.id
+            value=value,
+            realization_id=realization.id,
+            parameter_definition_id=parameter_definition.id,
         )
         self._session.add(parameter)
 

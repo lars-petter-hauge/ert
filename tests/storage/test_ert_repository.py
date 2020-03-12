@@ -43,37 +43,31 @@ def test_add_duplicate_observation(db_session):
             repository.commit()
 
 
-observation_data = {
-    ("POLY_OBS", 0, 10): {"OBS": 2.0, "STD": 0.1},
-    ("POLY_OBS", 2, 12): {"OBS": 7.1, "STD": 1.1},
-    ("POLY_OBS", 4, 14): {"OBS": 21.1, "STD": 4.1},
-    ("POLY_OBS", 6, 16): {"OBS": 31.8, "STD": 9.1},
-    ("POLY_OBS", 8, 18): {"OBS": 53.2, "STD": 16.1},
-    ("TEST_OBS", 3, 3): {"OBS": 6, "STD": 0.1},
-    ("TEST_OBS", 6, 6): {"OBS": 12, "STD": 0.2},
-    ("TEST_OBS", 9, 9): {"OBS": 18, "STD": 0.3},
-}
-
-
 def test_add_response(db_session):
     with ErtRepository(db_session) as repository:
         ensemble = repository.add_ensemble(name="test")
 
+        response_definition = repository.add_response_definition(
+            name="test", indexes=[0, 2], ensemble_name=ensemble.name
+        )
+
         realization = repository.add_realization(0, ensemble.name)
 
         response = repository.add_response(
-            name="test",
+            name=response_definition.name,
             values=[22.1, 44.2],
-            indexes=[0, 1],
             realization_index=realization.index,
             ensemble_name=ensemble.name,
         )
         repository.commit()
         assert ensemble.id is not None
+        assert response_definition.id is not None
+        assert response_definition.ensemble_id is not None
         assert realization.id is not None
         assert realization.ensemble_id is not None
         assert response.id is not None
         assert response.realization_id is not None
+        assert response.response_definition_id is not None
 
 
 def test_add_ensemble(db_session):
@@ -113,11 +107,15 @@ def test_add_parameter(db_session):
     with ErtRepository(db_session) as repository:
         ensemble = repository.add_ensemble(name="test")
 
+        parameter_definition = repository.add_parameter_definition(
+            name="test_param", group="test_group", ensemble_name=ensemble.name
+        )
+
         realization = repository.add_realization(0, ensemble.name)
 
         parameter = repository.add_parameter(
-            name="test_param",
-            group="test_group",
+            name=parameter_definition.name,
+            group=parameter_definition.group,
             value=22.1,
             realization_index=realization.index,
             ensemble_name=ensemble.name,
@@ -125,7 +123,10 @@ def test_add_parameter(db_session):
         repository.commit()
 
         assert ensemble.id is not None
+        assert parameter_definition.id is not None
+        assert parameter_definition.ensemble_id is not None
         assert realization.id is not None
         assert realization.ensemble_id is not None
         assert parameter.id is not None
         assert parameter.realization_id is not None
+        assert parameter.parameter_definition_id is not None

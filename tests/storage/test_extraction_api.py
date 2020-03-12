@@ -23,7 +23,7 @@ def test_dump_observations(db_session):
         observations = pd.DataFrame.from_dict(observation_data)
         _dump_observations(repository=repository, observations=observations)
         repository.commit()
-    
+
     with ErtRepository(db_session) as repository:
         poly_obs = repository.get_observation("POLY_OBS")
         assert poly_obs.id is not None
