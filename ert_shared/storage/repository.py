@@ -70,20 +70,17 @@ class ErtRepository:
     def add_ensemble(self, name):
         ensemble = Ensemble(name=name)
         self._session.add(ensemble)
-        # self._session.commit()
         return ensemble
 
-    def add_realizations(self, indexes, ensemble_name):
+    def add_realization(self, index, ensemble_name):
         ensemble = self.get_ensemble(name=ensemble_name)
 
-        realizations = []
-        for index in indexes:
-            realization = Realization(index=index)
-            ensemble.realizations.append(realization)
-            realizations.append(realization)
-            self._session.add(realization)
+        realization = Realization(index=index)
+        ensemble.realizations.append(realization)
 
-        return realizations
+        self._session.add(realization)
+
+        return realization
 
     def add_response(
         self,
@@ -106,7 +103,6 @@ class ErtRepository:
             observation_id=observation_id,
         )
         self._session.add(response)
-        self._session.commit()
 
         return response
 
@@ -119,7 +115,6 @@ class ErtRepository:
             name=name, group=group, value=value, realization_id=realization.id
         )
         self._session.add(parameter)
-        self._session.commit()
 
         return parameter
 
@@ -132,8 +127,6 @@ class ErtRepository:
             stds=stds,
         )
         self._session.add(observation)
-
-        self._session.commit()
 
         return observation
 

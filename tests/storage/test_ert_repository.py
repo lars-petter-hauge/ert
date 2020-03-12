@@ -9,27 +9,7 @@ from tests.storage import db_session, engine, tables
 
 
 def test_add_observation(db_session):
-    repository = ErtRepository(session=db_session)
-    observation = repository.add_observation(
-        name="test",
-        key_indexes=[0, 3],
-        data_indexes=[0, 3],
-        values=[22.1, 44.2],
-        stds=[1, 3],
-    )
-    assert observation is not None
-
-
-def test_add_duplicate_observation(db_session):
-    repository = ErtRepository(session=db_session)
-    observation = repository.add_observation(
-        name="test",
-        key_indexes=[0, 3],
-        data_indexes=[0, 3],
-        values=[22.1, 44.2],
-        stds=[1, 3],
-    )
-    with pytest.raises(sqlalchemy.exc.IntegrityError) as error:
+    with ErtRepository(db_session) as repository:
         observation = repository.add_observation(
             name="test",
             key_indexes=[0, 3],
@@ -37,6 +17,30 @@ def test_add_duplicate_observation(db_session):
             values=[22.1, 44.2],
             stds=[1, 3],
         )
+        repository.commit()
+        assert observation is not None
+
+
+def test_add_duplicate_observation(db_session):
+    with ErtRepository(db_session) as repository:
+        observation = repository.add_observation(
+            name="test",
+            key_indexes=[0, 3],
+            data_indexes=[0, 3],
+            values=[22.1, 44.2],
+            stds=[1, 3],
+        )
+        repository.commit()
+
+        with pytest.raises(sqlalchemy.exc.IntegrityError) as error:
+            observation = repository.add_observation(
+                name="test",
+                key_indexes=[0, 3],
+                data_indexes=[0, 3],
+                values=[22.1, 44.2],
+                stds=[1, 3],
+            )
+            repository.commit()
 
 
 observation_data = {
@@ -52,40 +56,47 @@ observation_data = {
 
 
 def test_add_response(db_session):
-    repository = ErtRepository(session=db_session)
-    ensemble = repository.add_ensemble(name="test")
-    realization = repository.add_realization(0, "test")
-    response = repository.add_response(
-        name="test",
-        values=[22.1, 44.2],
-        indexes=[0, 1],
-        realization_index=0,
-        ensemble_name="test",
-    )
-    assert ensemble.id is not None
-    assert realization.id is not None
-    assert realization.ensemble_id is not None
-    assert response.id is not None
-    assert response.realization_id is not None
+    with ErtRepository(db_session) as repository:
+        ensemble = repository.add_ensemble(name="test")
+
+        realization = repository.add_realization(0, ensemble.name)
+
+        response = repository.add_response(
+            name="test",
+            values=[22.1, 44.2],
+            indexes=[0, 1],
+            realization_index=realization.index,
+            ensemble_name=ensemble.name,
+        )
+        repository.commit()
+        assert ensemble.id is not None
+        assert realization.id is not None
+        assert realization.ensemble_id is not None
+        assert response.id is not None
+        assert response.realization_id is not None
 
 
 def test_add_ensemble(db_session):
-    repository = ErtRepository(session=db_session)
-    ensemble = repository.add_ensemble(name="test_ensemble")
-    assert ensemble.id is not None
+    with ErtRepository(db_session) as repository:
+        ensemble = repository.add_ensemble(name="test_ensemble")
+        repository.commit()
+        assert ensemble.id is not None
 
-    with pytest.raises(sqlalchemy.exc.IntegrityError) as error:
-        repository.add_ensemble(name="test_ensemble")
+        with pytest.raises(sqlalchemy.exc.IntegrityError) as error:
+            repository.add_ensemble(name="test_ensemble")
+            repository.commit()
 
 
 def test_add_realization(db_session):
-    with ErtRepository(db_session) as db:
-        ensemble = db.add_ensemble(name="test_ensemble")
-        db.commit()
+    with ErtRepository(db_session) as repository:
+        ensemble = repository.add_ensemble(name="test_ensemble")
 
-        realizations = db.add_realizations([i for i in range(5)], "test_ensemble")
+        realizations = []
+        for i in range(5):
+            realization = repository.add_realization(i, ensemble.name)
+            realizations.append(realization)
 
-        db.commit()
+        repository.commit()
 
         assert ensemble.id is not None
         for realization in realizations:
@@ -93,25 +104,28 @@ def test_add_realization(db_session):
 
     with pytest.raises(sqlalchemy.exc.IntegrityError) as error, ErtRepository(
         session=db_session
-    ) as db:
-        db.add_realizations([0], ensemble_name="test_ensemble")
-        db.commit()
+    ) as repository:
+        repository.add_realization(0, ensemble_name=ensemble.name)
+        repository.commit()
 
 
 def test_add_parameter(db_session):
-    repository = ErtRepository(session=db_session)
-    ensemble = repository.add_ensemble(name="test")
-    realization = repository.add_realization(0, "test")
+    with ErtRepository(db_session) as repository:
+        ensemble = repository.add_ensemble(name="test")
 
-    parameter = repository.add_parameter(
-        name="test",
-        group="test_group",
-        value=22.1,
-        realization_index=0,
-        ensemble_name="test",
-    )
-    assert ensemble.id is not None
-    assert realization.id is not None
-    assert realization.ensemble_id is not None
-    assert parameter.id is not None
-    assert parameter.realization_id is not None
+        realization = repository.add_realization(0, ensemble.name)
+
+        parameter = repository.add_parameter(
+            name="test_param",
+            group="test_group",
+            value=22.1,
+            realization_index=realization.index,
+            ensemble_name=ensemble.name,
+        )
+        repository.commit()
+
+        assert ensemble.id is not None
+        assert realization.id is not None
+        assert realization.ensemble_id is not None
+        assert parameter.id is not None
+        assert parameter.realization_id is not None

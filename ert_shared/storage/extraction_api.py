@@ -4,6 +4,12 @@ from ert_shared.storage.repository import ErtRepository
 from ert_data.measured import MeasuredData
 
 
+def _create_ensemble(repository):
+    facade = ERT.enkf_facade
+    ensemble_name = facade.get_current_case_name()
+    return repository.add_ensemble(ensemble_name)
+
+
 def _extract_and_dump_observations(repository):
     facade = ERT.enkf_facade
 
@@ -32,26 +38,23 @@ def _dump_observations(repository, observations):
         )
 
 
-def _extract_and_dump_parameters(repository):
+def _extract_and_dump_parameters(repository, ensemble_name):
     facade = ERT.enkf_facade
-
-    ensemble_name = facade.get_current_case_name()
 
     parameter_keys = [
         key for key in facade.all_data_type_keys() if facade.is_gen_kw_key(key)
     ]
     all_parameters = {
         key: facade.gather_gen_kw_data(ensemble_name, key) for key in parameter_keys
-    }
-    print(all_parameters)
+    }    
 
-    _dump_parameters(repository=repository, parameters=all_parameters, ensemble_name=ensemble_name)
+    _dump_parameters(
+        repository=repository, parameters=all_parameters, ensemble_name=ensemble_name
+    )
 
 
 def _dump_parameters(repository, parameters, ensemble_name):
     ensemble = repository.get_ensemble(name=ensemble_name)
-    if ensemble is None:
-        ensemble = repository.add_ensemble(name=ensemble_name)
 
     for key, parameter in parameters.items():
         group, name = key.split(":")
@@ -72,10 +75,8 @@ def _dump_parameters(repository, parameters, ensemble_name):
             )
 
 
-def _extract_and_dump_responses(repository):
+def _extract_and_dump_responses(repository, ensemble_name):
     facade = ERT.enkf_facade
-
-    ensemble_name = facade.get_current_case_name()
 
     gen_data_keys = [
         key for key in facade.all_data_type_keys() if facade.is_gen_data_key(key)
@@ -95,17 +96,27 @@ def _extract_and_dump_responses(repository):
 
     # print(gen_data_data)
     observation_keys = repository.get_all_observation_keys()
-    key_mapping = {facade.get_data_key_for_obs_key(key): key for key in observation_keys}
+    key_mapping = {
+        facade.get_data_key_for_obs_key(key): key for key in observation_keys
+    }
 
-    _dump_response(repository=repository, responses=gen_data_data, ensemble_name=ensemble_name, key_mapping=key_mapping)
-    _dump_response(repository=repository, responses=summary_data, ensemble_name=ensemble_name, key_mapping=key_mapping)
+    _dump_response(
+        repository=repository,
+        responses=gen_data_data,
+        ensemble_name=ensemble_name,
+        key_mapping=key_mapping,
+    )
+    _dump_response(
+        repository=repository,
+        responses=summary_data,
+        ensemble_name=ensemble_name,
+        key_mapping=key_mapping,
+    )
 
 
 def _dump_response(repository, responses, ensemble_name, key_mapping):
 
     ensemble = repository.get_ensemble(name=ensemble_name)
-    if ensemble is None:
-        ensemble = repository.add_ensemble(name=ensemble_name)
 
     for key, response in responses.items():
         for realization_index, values in response.iteritems():
@@ -125,20 +136,23 @@ def _dump_response(repository, responses, ensemble_name, key_mapping):
                 indexes=response.index.to_list(),
                 realization_index=realization.index,
                 ensemble_name=ensemble.name,
-                observation_id=observation_id
+                observation_id=observation_id,
             )
-
 
 
 def dump_to_new_storage(repository=None):
     print("Starting extraction...")
     import time
+
     start = time.time()
     if repository is None:
         repository = ErtRepository()
 
-    _extract_and_dump_observations(repository=repository)
-    _extract_and_dump_parameters(repository=repository)
-    _extract_and_dump_responses(repository=repository)
+    with repository:
+        ensemble = _create_ensemble(repository)
+        _extract_and_dump_observations(repository=repository)
+        _extract_and_dump_parameters(repository=repository, ensemble_name=ensemble.name)
+        _extract_and_dump_responses(repository=repository, ensemble_name=ensemble.name)
+
     end = time.time()
     print("Extraction done... {}".format(end - start))

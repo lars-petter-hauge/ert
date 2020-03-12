@@ -19,18 +19,22 @@ observation_data = {
 
 
 def test_dump_observations(db_session):
-    repository = ErtRepository(session=db_session)
-    observations = pd.DataFrame.from_dict(observation_data)
-    _dump_observations(repository=repository, observations=observations)
+    with ErtRepository(db_session) as repository:
+        observations = pd.DataFrame.from_dict(observation_data)
+        _dump_observations(repository=repository, observations=observations)
+        repository.commit()
+    
+    with ErtRepository(db_session) as repository:
+        poly_obs = repository.get_observation("POLY_OBS")
+        assert poly_obs.id is not None
+        assert poly_obs.key_indexes == [0, 2, 4, 6, 8]
+        assert poly_obs.data_indexes == [10, 12, 14, 16, 18]
+        assert poly_obs.values == [2.0, 7.1, 21.1, 31.8, 53.2]
+        assert poly_obs.stds == [0.1, 1.1, 4.1, 9.1, 16.1]
 
-    poly_obs = repository.get_observation("POLY_OBS")
-    assert poly_obs.key_indexes == [0, 2, 4, 6, 8]
-    assert poly_obs.data_indexes == [10, 12, 14, 16, 18]
-    assert poly_obs.values == [2.0, 7.1, 21.1, 31.8, 53.2]
-    assert poly_obs.stds == [0.1, 1.1, 4.1, 9.1, 16.1]
-
-    test_obs = repository.get_observation("TEST_OBS")
-    assert test_obs.key_indexes == [3, 6, 9]
-    assert test_obs.data_indexes == [3, 6, 9]
-    assert test_obs.values == [6, 12, 18]
-    assert test_obs.stds == [0.1, 0.2, 0.3]
+        test_obs = repository.get_observation("TEST_OBS")
+        assert test_obs.id is not None
+        assert test_obs.key_indexes == [3, 6, 9]
+        assert test_obs.data_indexes == [3, 6, 9]
+        assert test_obs.values == [6, 12, 18]
+        assert test_obs.stds == [0.1, 0.2, 0.3]
