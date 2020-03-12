@@ -136,6 +136,8 @@ def dump_to_new_storage(repository=None):
     print("Starting extraction...")
     import time
 
+    # TODO: What to do if the ensemble already exist in the database?
+
     start = time.time()
     if repository is None:
         repository = ErtRepository()
@@ -148,4 +150,5 @@ def dump_to_new_storage(repository=None):
         repository.commit()
 
     end = time.time()
-    print("Extraction done... {}".format(end - start))
+    print("Extraction done... (Took {} seconds)".format(end - start))
+    print("All ensembles in database: {}".format(", ".join([ensemble.name for ensemble in repository.get_all_ensembles()])))

@@ -190,3 +190,6 @@ class ErtRepository:
     def get_all_observation_keys(self):
         return [obs.name for obs in self._session.query(Observation.name).all()]
 
+    def get_all_ensembles(self):
+        return [ensemble for ensemble in self._session.query(Ensemble).all()]
+
