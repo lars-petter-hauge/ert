@@ -1,12 +1,12 @@
 import pandas as pd
 
-from ert_shared.storage.data_source import ErtDataSource
+from ert_shared.storage.repository import ErtRepository
 
 
 class PlotStorageApi(object):
 
     def __init__(self):
-        self._data_source = ErtDataSource()
+        self._data_source = ErtRepository()
 
     def all_data_type_keys(self):
         """ Returns a list of all the keys except observation keys. For each key a dict is returned with info about
