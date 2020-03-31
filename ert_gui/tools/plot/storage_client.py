@@ -1,6 +1,12 @@
 import pandas as pd
 import requests
 
+def convert_response_to_float(resp):
+    """
+    Takes the return of a request
+    """
+    string = resp.content.decode(resp.encoding)
+    return [float(x) for x in string.split(",")]
 
 class StorageClient(object):
     def __init__(self):
@@ -67,7 +73,7 @@ class StorageClient(object):
         ]
         """
 
-        r = requests.get("{base}/ensembles".format(self._BASE_URI))
+        r = requests.get("{base}/ensembles".format(base=self._BASE_URI))
 
         ensembles = r.json()["ensembles"]
 
@@ -92,7 +98,7 @@ class StorageClient(object):
 
             r = requests.get(real["ref_pointer"])
             realization = r.json()
-
+            response_df = pd.DataFrame()
             for resp in realization["responses"]:
                 if resp["name"] != key:
                     continue
@@ -101,8 +107,18 @@ class StorageClient(object):
 
                 # TODO: simplified for now, expected structure not in place
                 # Need to add index as well
-                df.append(r.json()["data"])
 
+                # issue:
+                # r.json() -> json.decoder.JSONDecodeError: Extra data: line 1 column 8 (char 7)
+                data = pd.Series(convert_response_to_float(r), name=real["name"])
+
+                response_df = response_df.append(data)
+
+            df = df.append(response_df)
+
+        arrays = [[key]*len(df.columns), df.columns]
+        index = pd.MultiIndex.from_arrays(arrays, names=('key', 'index'))
+        df.columns = index
         return df
 
     def observations_for_obs_keys(self, case, obs_keys): #is obs_keys really plural?
