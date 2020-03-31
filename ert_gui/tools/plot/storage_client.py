@@ -4,7 +4,7 @@ import requests
 
 class StorageClient(object):
     def __init__(self):
-        self._BASE_URI = "http://api.ert/v1" # Should be localhost or something..
+        self._BASE_URI = "http://127.0.0.1:5000/" # Default flask server
 
     def all_data_type_keys(self):
         """ Returns a list of all the keys except observation keys. For each key a dict is returned with info about
@@ -33,73 +33,23 @@ class StorageClient(object):
 
         r = requests.get("{base}/ensembles".format(base=self._BASE_URI))
 
-        ens = r.json()[0]
+        ens_pointer = r.json()["ensembles"][0]["ref_pointer"]
 
-        result = []
+        r = requests.get(ens_pointer)
 
-        r = requests.get(
-            "{base}/ensembles/{ens_id}/observations".format(
-                base=self._BASE_URI, ens_id=ens["id"]
-            )
-        )
+        ens_schema = r.json()
 
-        observations = r.json()
-
-        # We need an overview of all the parameter/respons names. Currently these are fetched through the realization
-        # entry point. We use the first realization to get them
-        r = requests.get(
-            "{base}/ensembles/{ens_id}/realizations".format(
-                base=self._BASE_URI, ens_id=ens["id"]
-            )
-        )
-
-        real = r.json()[0]
-
-        r = requests.get(
-            "{base}/ensembles/{ens_id}/realizations/{real_id}/parameters".format(
-                base=self._BASE_URI, ens_id=ens["id"], real_id=real["id"]
-            )
-        )
-
-        result.extend(
-            [
-                {
-                    "key": param["name"],
-                    "index_type": None,
-                    "observations": [],
-                    "has_refcase": False,
-                    "dimensionality": 1,
-                    "metadata": {"data_origin": "Parameters"},
-                }
-                for param in r.json()
-            ]
-        )
-
-        r = requests.get(
-            "{base}/ensembles/{ens_id}/realizations/{real_id}/response".format(
-                base=self._BASE_URI, ens_id=ens["id"], real_id=real["id"]
-            )
-        )
-
-        def _response_observations(response):
-            for obs in observations:
-                if response == obs["response"]:
-                    return obs["value"]
-            return []
-
-        result.extend(
-            [
+        result =  [
                 {
                     "key": resp["name"],
                     "index_type": None,
-                    "observations": _response_observations(resp["name"]),
+                    "observations": [],
                     "has_refcase": False,
                     "dimensionality": 2,
                     "metadata": {"data_origin": "Reponse"},
                 }
-                for resp in r.json()
+                for resp in ens_schema["responses"]
             ]
-        )
 
         return result
 
@@ -119,67 +69,39 @@ class StorageClient(object):
 
         r = requests.get("{base}/ensembles".format(self._BASE_URI))
 
+        ensembles = r.json()["ensembles"]
+
         return [
-            {"has_data": True, "hidden": False, "name": ens["name"]} for ens in r.json()
+            {"has_data": True, "hidden": False, "name": ens["name"]} for ens in ensembles
         ]
 
     def data_for_key(self, case, key):
         """ Returns a pandas DataFrame with the datapoints for a given key for a given case. The row index is
             the realization number, and the column index is a multi-index with (key, index/date)"""
 
-        r = requests.get("{base}/ensembles/".format(base=self._BASE_URI))
+        r = requests.get("{base}/ensembles".format(base=self._BASE_URI))
 
-        ens = [ens for ens in r.json() if ens["name"] == case][0]
+        ens_pointer = r.json()["ensembles"][0]["ref_pointer"]
 
-        r = requests.get(
-            "{base}/ensembles/{ens_id}/realizations".format(
-                base=self._BASE_URI, ens_id=ens["id"]
-            )
-        )
+        r = requests.get(ens_pointer)
+
+        ens_schema = r.json()
 
         df = pd.DataFrame()
-        for real in r.json():
+        for real in ens_schema["realizations"]:
 
-            r = requests.get(
-                "{base}/ensembles/{ens_id}/realizations/{real_id}".format(
-                    base=self._BASE_URI, ens_id=ens["id"], real_id=real["id"]
-                )
-            )
+            r = requests.get(real["ref_pointer"])
             realization = r.json()
 
-            r = requests.get(
-                "{base}/ensembles/{ens_id}/realizations/{real_id}/parameters".format(
-                    base=self._BASE_URI, ens_id=ens["id"], real_id=real["id"]
-                )
-            )
-            parameters = [param for param in r.json() if param["name"] == key]
+            for resp in realization["responses"]:
+                if resp["name"] != key:
+                    continue
 
-            for param in parameters:
-                r = requests.get(
-                    "{base}/data/{data_ref}".format(
-                        base=self._BASE_URI, data_ref=param["data_ref"]
-                    )
-                )
-                data = r.json()
+                r = requests.get(resp["data_ref"])
+
                 # TODO: simplified for now, expected structure not in place
-                df.append(data)
-
-            r = requests.get(
-                "{base}/ensembles/{ens_id}/realizations/{real_id}/responses".format(
-                    base=self._BASE_URI, ens_id=ens["id"], real_id=real["id"]
-                )
-            )
-            responses = [resp for resp in r.json() if resp["name"] == key]
-
-            for resp in responses:
-                r = requests.get(
-                    "{base}/data/{data_ref}".format(
-                        base=self._BASE_URI, data_ref=resp["data_ref"]
-                    )
-                )
-                data = r.json()
-                # TODO: simplified for now, expected structure not in place
-                df.append(data)
+                # Need to add index as well
+                df.append(r.json()["data"])
 
         return df
 
@@ -188,28 +110,6 @@ class StorageClient(object):
             is the realization number, and the column index is a multi-index with (obs_key, index/date, obs_index),
             where index/date is used to relate the observation to the data point it relates to, and obs_index is
             the index for the observation itself"""
-
-        r = requests.get("{base}/ensembles/".format(base=self._BASE_URI))
-
-        ens = [ens for ens in r.json() if ens["name"] == case][0]
-
-        r = requests.get(
-            "{base}/ensembles/{ens_id}/observations".format(
-                base=self._BASE_URI, ens_id=ens["id"]
-            )
-        )
-
-        observations = [obs for obs in r.json() if obs["name"] in obs_keys]
-
-        df = pd.DataFrame()
-        for obs in observations:
-            r = requests.get(
-                "{base}/data/{data_ref}".format(
-                    base=self._BASE_URI, data_ref=obs["data_ref"]
-                )
-            )
-            # TODO: simplified for now, expected structure not in place
-            df.append(r.json())
 
         return pd.DataFrame()
 
