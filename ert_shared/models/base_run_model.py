@@ -1,6 +1,9 @@
 import time
+import threading
+
 from res.job_queue import JobStatusType
 from res.job_queue import ForwardModelStatus
+from res.messaging import MessageServer
 from res.util import ResLog
 from ecl.util.util import BoolVector
 from ert_shared import ERT
@@ -29,10 +32,20 @@ def job_queue(default):
 class ErtRunError(Exception):
     pass
 
+
+def setup_server():
+    server = MessageServer()
+    server.run()
+
 class BaseRunModel(object):
 
     def __init__(self, queue_config, phase_count=1):
         super(BaseRunModel, self).__init__()
+        # This is of course just a POC, the initilization would not be placed here.
+        # And there is likely a better way of setting it up as well
+        x = threading.Thread(target=setup_server)
+        x.daemon = True
+        x.start()
         self._phase = 0
         self._phase_count = phase_count
         self._phase_name = "Starting..."
